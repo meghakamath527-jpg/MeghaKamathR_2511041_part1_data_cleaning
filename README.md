@@ -1,1 +1,12 @@
-# MeghaKamath_bitsom_ba_2511041_data_cleaning
+
+
+Assignment part title
+Business problem summary
+Dataset used
+Tools used
+Steps performed
+Key outputs
+Business insights
+Assumptions made
+Known limitations
+Screenshots or links to screenshots inside the repository
