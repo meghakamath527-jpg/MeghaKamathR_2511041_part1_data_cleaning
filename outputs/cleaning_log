@@ -1,0 +1,99 @@
+# Cleaning Log
+
+## List of Issues Found
+
+During the initial profiling of the dataset, several data quality issues were found across the columns:
+
+* Missing Values: Blank fields discovered in critical categorical and numerical dimensions—specifically across region (26 missing), ship_mode (22 missing), and discount (18 missing).
+
+* Duplicate Entries: Identical row repetitions causing data volume inflation, alongside conflicting duplicate IDs where a single order_id held completely different operational details.
+
+* Format & Value Inconsistencies: Messy, unstandardized string percentages in the discount column and negative discount values (-16 entries).
+
+* Logical & Sequential Breaches: Transactions where the ship_date was logged chronologically earlier than the order_date.
+
+* Downstream Calculation Mismatches: System-generated math errors where recorded sales and profit metrics diverged from their foundational formula equations.
+
+* Order Status Vulnerabilities: Blended tracking records containing non-completed transaction states (Cancelled, Failed, and Refunded rows).
+
+---
+
+## Cleaning Actions Performed
+
+* Missing Value Imputation: Filled all blank region and ship_mode fields with the fallback string "Unknown". Replaced missing discount entries with 0 to keep financial columns clean.
+
+* Data Standardization: Stripped whitespace from string IDs and parsed all varied text fields in order_date and ship_date into clean datetime object formats.
+
+* Discount Cleanup: Built a programmatic cleaning loop to catch text symbols (like %), standardize whole numbers into decimals (turning 15 into 0.15), and force negative parameters to zero.
+
+* Feature Engineering: Calculated 7 new columns to enhance data utility:
+
+  * cleaned_discount
+  * calculated_sales
+  * calculated_profit
+  * profit_margin
+  * shipping_delay_days
+  * order_month (formatted with numeric prefixes like "1 - January")
+  * order_year
+
+---
+
+## Business Rules Applied
+
+* Data Preservation (Rule 1): The raw input file raw_orders.xlsx was completely left alone and preserved; all modifications were compiled into a separate workbench sheet.
+
+* Discount Boundary Rule: Discounts were strictly bounded between a valid 0.0 (0%) and 1.0 (100%) range to safeguard downstream calculations.
+
+* Calculated Metrics Formulas:
+
+```excel
+=(Quantity * Unit_Price) * (1 - Cleaned_Discount)
+```
+
+```excel
+Calculated_profit = calculated_sales - cost
+```
+
+```excel
+Profit_margin = calculated_profit / calculated_sales
+```
+
+* Filter Rule for Summary Reports: Excluded non-completed transaction states (Cancelled, Failed, Refunded) from summaries to prevent false performance metrics.
+
+---
+
+## Assumptions Made
+
+* Cost Column Definitions: In the raw dataset, the cost field represents Total Cost for that line item rather than unit cost, based on the perfect matching of Sales - Cost = Profit across all mathematically valid rows.
+
+* Zero Discount Default: Missing discounts were assumed to be a placeholder for 0% rather than an uncompleted transaction, provided the other sales metrics held up as valid.
+
+* First Instance Validation: For exact carbon-copy rows, the first appearance was assumed to be the valid entry, while subsequent matches were assumed to be copy-paste system glitches.
+
+---
+
+## Records Removed, If Any
+
+* Exact Duplicate Rows: 20 records were fully removed from the main operational sheet because they were 100% identical copy-paste errors across all 25 columns.
+
+---
+
+## Records Flagged, If Any
+
+A total of 80 records were flagged and isolated in our data quality workbook for manual administrator review due to the following criteria:
+
+* Conflicting Duplicate Order IDs: 24 rows (covering 12 unique order IDs) were flagged as "Flagged for Review: Conflicting Information" because the same ID pointed to different data.
+
+* Financial Calculation Mismatches: 80 unique rows failed validation checks when comparing the raw sheet against our formula checks (19 sales anomalies, 20 profit anomalies, and 41 dual mismatches).
+
+* Invalid Shipping Sequences: 94 rows were flagged as "invalid shipping record" due to shipping dates preceding order dates.
+
+* Negative Discounts: 16 rows were flagged as invalid and safely reset.
+
+---
+
+## Limitations of Your Cleaning Process
+
+* Lack of Primary Source Verification: Because this cleaning process is handled programmatically post-export, there is no direct connection to the underlying inventory management database or retail CRM. This means we cannot automatically verify whether a mismatch in a customer's name or sales value is the absolute truth without a manual invoice lookup.
+
+* Blind Overwrite of Total Cost: Since the system assumes the cost column tracks total cost uniformly, any individual rows that might have actually flipped to "unit cost" during manual data entry could show up as false-positive profit calculation errors.
